@@ -868,32 +868,40 @@ function buildSlide(t, i) {
   /* ── COLOUR HTML ── */
   const colourHTML = t.colours.map(c => `
     <div class="colour-card">
-      <div class="colour-swatch" style="background:${c.bg};${c.bg === t.bg ? 'border:1px solid rgba(255,255,255,0.15);' : ''}"></div>
+      <div class="colour-swatch" style="background:${c.bg};${c.bg === t.bg ? `border:1px solid ${subtleMd};` : ''}"></div>
       <span class="colour-hex" style="color:${t.text}">${c.hex}</span>
       <span class="colour-name" style="color:${t.text}">${c.name}</span>
-      <div class="colour-rationale" style="color:${t.text};border-color:${t.accent}30">${c.rationale}</div>
+      <div class="colour-rationale" style="color:${t.text};border-color:${t.accent}40;opacity:${t.lightBg ? '0.85' : '0.55'}">${c.rationale}</div>
     </div>`).join('');
+
+  /* ── LIGHT / DARK AWARE RGBA ── */
+  const subtle   = t.lightBg ? 'rgba(0,0,0,0.08)'  : 'rgba(255,255,255,0.08)';
+  const subtleMd = t.lightBg ? 'rgba(0,0,0,0.15)'  : 'rgba(255,255,255,0.15)';
+  const iconBdr  = t.lightBg ? 'rgba(0,0,0,0.22)'  : 'rgba(255,255,255,0.18)';
+  const metaBdr  = t.lightBg ? 'rgba(0,0,0,0.10)'  : 'rgba(255,255,255,0.08)';
+  const cardBg   = t.lightBg ? 'rgba(0,0,0,0.04)'  : 'rgba(255,255,255,0.02)';
+  const bodyOpacity = t.lightBg ? '0.65' : '0.5';
 
   /* ── TYPE CARDS HTML ── */
   const typeHTML = t.typeCards.map(tc => `
-    <div class="type-card" data-num="${tc.num}" style="border-color:rgba(255,255,255,0.08)">
+    <div class="type-card" data-num="${tc.num}" style="border-color:${subtle};background:${cardBg}">
       <span class="type-tag" style="color:${t.accent}">${tc.tag}</span>
       ${tc.display}
-      <span class="type-body">${tc.body}</span>
-      <div class="type-meta">
+      <span class="type-body" style="opacity:${bodyOpacity}">${tc.body}</span>
+      <div class="type-meta" style="border-color:${metaBdr}">
         ${tc.meta.map(m => `
           <div class="type-meta-row">
-            <span class="type-meta-label" style="color:${t.text}">${m.label}</span>
+            <span class="type-meta-label" style="color:${t.text};opacity:0.5">${m.label}</span>
             <span class="type-meta-value" style="color:${t.text}">${m.value}</span>
           </div>`).join('')}
       </div>
       <div class="type-rationale-toggle" onclick="toggleRationale(this)">
-        <div class="toggle-icon" style="border-color:rgba(255,255,255,0.18);color:${t.text}">
+        <div class="toggle-icon" style="border-color:${iconBdr};color:${t.text}">
           <svg viewBox="0 0 8 8"><path d="M2 1l4 3-4 3"/></svg>
         </div>
         <span style="color:${t.accent}">${tc.toggleLabel}</span>
       </div>
-      <div class="type-rationale-content" style="color:${t.text};border-color:${t.accent}30">${tc.rationale}</div>
+      <div class="type-rationale-content" style="color:${t.text};border-color:${t.accent}50;opacity:0.8">${tc.rationale}</div>
     </div>`).join('');
 
   slide.innerHTML = `
@@ -928,7 +936,7 @@ function buildSlide(t, i) {
       </section>
 
       <!-- FOOTER -->
-      <footer class="slide-footer" style="border-color:rgba(255,255,255,0.08);color:${t.text}">
+      <footer class="slide-footer" style="border-color:${subtle};color:${t.text}">
         <span class="footer-project">Project Phoenix</span>
         <span class="footer-meta">February 2026 · Confidential</span>
       </footer>
