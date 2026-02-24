@@ -1,0 +1,1112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Project Phoenix — Design Proposal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;0,700;1,300;1,400&family=Cormorant+SC:wght@300;400;600&family=Jost:wght@200;300;400;500&family=Abril+Fatface&family=Righteous&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+
+/* ════════════════════════════════════════════
+   BASE RESET
+════════════════════════════════════════════ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; width: 100%; overflow: hidden; -webkit-font-smoothing: antialiased; }
+
+body {
+  font-family: 'Jost', sans-serif;
+  font-weight: 300;
+  background: #07213F;
+  transition: background 0.9s cubic-bezier(0.77, 0, 0.18, 1);
+}
+
+/* ════════════════════════════════════════════
+   NOISE OVERLAY
+════════════════════════════════════════════ */
+#noise {
+  position: fixed; inset: 0; z-index: 200;
+  pointer-events: none; opacity: 0.55;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+}
+
+/* ════════════════════════════════════════════
+   SLIDE SYSTEM
+   Each slide is a full-page independently scrollable panel
+════════════════════════════════════════════ */
+#slides-container {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+}
+
+.slide {
+  position: absolute;
+  inset: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(40px);
+  transition: opacity 0.7s cubic-bezier(0.77, 0, 0.18, 1),
+              transform 0.7s cubic-bezier(0.77, 0, 0.18, 1);
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,0.15) transparent;
+}
+.slide::-webkit-scrollbar { width: 3px; }
+.slide::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 2px; }
+
+.slide.active {
+  opacity: 1;
+  pointer-events: all;
+  transform: translateY(0);
+}
+
+.slide.exit-up {
+  opacity: 0;
+  transform: translateY(-40px);
+  pointer-events: none;
+}
+
+/* ════════════════════════════════════════════
+   SLIDE INNER WRAPPER
+════════════════════════════════════════════ */
+.slide-inner {
+  max-width: 1160px;
+  margin: 0 auto;
+  padding: 72px 48px 140px;
+  position: relative;
+  z-index: 1;
+}
+
+/* ════════════════════════════════════════════
+   FIXED LEFT NAVIGATION
+════════════════════════════════════════════ */
+#nav {
+  position: fixed;
+  left: 0; top: 0; bottom: 0;
+  width: 68px;
+  z-index: 150;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 32px 0;
+}
+
+/* Subtle left border */
+#nav::after {
+  content: '';
+  position: absolute;
+  right: 0; top: 15%; bottom: 15%;
+  width: 1px;
+  background: rgba(255,255,255,0.07);
+}
+
+.nav-dot {
+  position: relative;
+  width: 32px; height: 32px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border-radius: 4px;
+}
+
+.nav-dot:hover { background: rgba(255,255,255,0.06); }
+
+.nav-dot-num {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 12px;
+  font-weight: 300;
+  letter-spacing: 0.05em;
+  color: rgba(255,255,255,0.25);
+  transition: color 0.3s ease, font-size 0.3s ease;
+  line-height: 1;
+}
+
+.nav-dot.active .nav-dot-num {
+  color: rgba(255,255,255,0.9);
+  font-size: 14px;
+}
+
+/* Active indicator bar */
+.nav-dot::before {
+  content: '';
+  position: absolute;
+  right: 0; top: 50%;
+  transform: translateY(-50%);
+  width: 2px; height: 0;
+  background: rgba(255,255,255,0.6);
+  border-radius: 1px;
+  transition: height 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.nav-dot.active::before { height: 20px; }
+
+/* Nav tooltip on hover */
+.nav-dot .nav-tooltip {
+  position: absolute;
+  left: calc(100% + 12px);
+  top: 50%; transform: translateY(-50%);
+  background: rgba(0,0,0,0.85);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 4px;
+  padding: 6px 12px;
+  white-space: nowrap;
+  font-size: 9px;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.7);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+.nav-dot:hover .nav-tooltip { opacity: 1; }
+
+/* ════════════════════════════════════════════
+   FIXED BOTTOM ARROW NAV
+════════════════════════════════════════════ */
+#bottom-nav {
+  position: fixed;
+  bottom: 32px;
+  right: 48px;
+  z-index: 150;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.arrow-btn {
+  width: 46px; height: 46px;
+  border-radius: 50%;
+  border: 1px solid rgba(255,255,255,0.18);
+  background: rgba(255,255,255,0.05);
+  backdrop-filter: blur(10px);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  color: rgba(255,255,255,0.7);
+  transition: all 0.3s ease;
+}
+.arrow-btn:hover {
+  border-color: rgba(255,255,255,0.45);
+  background: rgba(255,255,255,0.12);
+  transform: scale(1.08);
+  color: rgba(255,255,255,1);
+}
+.arrow-btn svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.5; }
+
+.slide-counter-fixed {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 13px;
+  font-weight: 300;
+  letter-spacing: 0.3em;
+  color: rgba(255,255,255,0.4);
+  margin: 0 4px;
+}
+
+/* ════════════════════════════════════════════
+   PROJECT HEADER (shown on every slide)
+════════════════════════════════════════════ */
+.proposal-header {
+  text-align: center;
+  margin-bottom: 80px;
+  opacity: 0;
+  transform: translateY(24px);
+  transition: opacity 0.8s ease, transform 0.8s ease;
+}
+.proposal-header.visible { opacity: 1; transform: translateY(0); }
+
+.proposal-header .eyebrow {
+  font-size: 9px;
+  font-weight: 400;
+  letter-spacing: 0.5em;
+  text-transform: uppercase;
+  margin-bottom: 18px;
+  display: block;
+  opacity: 0.5;
+}
+
+.proposal-header h1 {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: clamp(44px, 6vw, 80px);
+  font-weight: 300;
+  line-height: 0.95;
+  letter-spacing: -0.01em;
+  margin-bottom: 10px;
+}
+.proposal-header h1 em { font-style: italic; opacity: 0.55; }
+
+.proposal-header .style-name-tag {
+  font-size: 9px;
+  letter-spacing: 0.5em;
+  text-transform: uppercase;
+  opacity: 0.4;
+  display: block;
+  margin-top: 18px;
+}
+
+.rule-line {
+  display: flex; align-items: center; gap: 16px;
+  justify-content: center; margin-top: 28px;
+}
+.rule-line::before, .rule-line::after {
+  content: ''; flex: 1; max-width: 100px; height: 1px;
+  background: linear-gradient(to right, transparent, currentColor);
+  opacity: 0.2;
+}
+.rule-line::after { background: linear-gradient(to left, transparent, currentColor); }
+.rule-ornament { font-family: 'Cormorant Garamond', serif; font-size: 16px; letter-spacing: 0.2em; opacity: 0.35; }
+
+/* ════════════════════════════════════════════
+   SECTION LABEL
+════════════════════════════════════════════ */
+.section-label {
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.5em;
+  text-transform: uppercase;
+  opacity: 0.45;
+  margin-bottom: 40px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.section-label::after {
+  content: ''; flex: 1; height: 1px;
+  background: currentColor; opacity: 0.15;
+}
+
+/* ════════════════════════════════════════════
+   MOCKUP GALLERY
+════════════════════════════════════════════ */
+.mockup-section { margin-bottom: 100px; }
+
+.mockup-gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 20px;
+}
+
+.mockup-card {
+  position: relative;
+  border-radius: 6px;
+  overflow: hidden;
+  opacity: 0;
+  transform: translateY(36px);
+  transition: transform 0.6s cubic-bezier(0.22, 1, 0.36, 1),
+              box-shadow 0.4s ease,
+              opacity 0.6s ease;
+  box-shadow: 0 24px 60px rgba(0,0,0,0.35);
+}
+.mockup-card.visible { opacity: 1; transform: translateY(0); }
+.mockup-card:hover {
+  transform: translateY(-8px) rotate(-0.5deg);
+  box-shadow: 0 48px 90px rgba(0,0,0,0.5);
+}
+.mockup-card img {
+  width: 100%; display: block;
+  aspect-ratio: 3/4; object-fit: cover;
+}
+
+.mockup-caption {
+  position: absolute; bottom: 0; left: 0; right: 0;
+  padding: 40px 22px 20px;
+  background: linear-gradient(to top, rgba(0,0,0,0.82), transparent);
+  transform: translateY(8px); opacity: 0;
+  transition: all 0.4s ease;
+}
+.mockup-card:hover .mockup-caption { transform: translateY(0); opacity: 1; }
+
+.mockup-caption h3 {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 20px; font-weight: 400; letter-spacing: 0.05em;
+  margin-bottom: 4px; color: #fff;
+}
+.mockup-caption p {
+  font-size: 9px; letter-spacing: 0.3em;
+  text-transform: uppercase; color: rgba(255,255,255,0.55);
+}
+
+/* Placeholder mockup card */
+.mockup-placeholder-card {
+  aspect-ratio: 3/4;
+  border-radius: 6px;
+  border: 1px dashed rgba(255,255,255,0.12);
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 14px;
+  opacity: 0.35;
+}
+.mockup-placeholder-card svg { opacity: 0.5; }
+.mockup-placeholder-card span {
+  font-size: 8px; letter-spacing: 0.4em;
+  text-transform: uppercase;
+}
+
+/* ════════════════════════════════════════════
+   COLOUR SECTION
+════════════════════════════════════════════ */
+.colour-section {
+  margin-bottom: 100px;
+  opacity: 0; transform: translateY(32px);
+  transition: opacity 0.8s ease, transform 0.8s ease;
+}
+.colour-section.visible { opacity: 1; transform: translateY(0); }
+
+.colour-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 14px;
+}
+
+.colour-card { cursor: pointer; position: relative; }
+
+.colour-swatch {
+  width: 100%; aspect-ratio: 1;
+  border-radius: 6px; margin-bottom: 14px;
+  position: relative; overflow: hidden;
+  transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1),
+              box-shadow 0.3s ease;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+}
+.colour-card:hover .colour-swatch {
+  transform: scale(1.06);
+  box-shadow: 0 16px 40px rgba(0,0,0,0.4);
+}
+.colour-swatch::after {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(135deg, rgba(255,255,255,0.14) 0%, transparent 55%);
+  border-radius: 6px;
+}
+
+/* Shimmer */
+.colour-swatch::before {
+  content: '';
+  position: absolute; top: 0; left: 0;
+  width: 50%; height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.18), transparent);
+  transform: translateX(-150%); z-index: 1;
+}
+.colour-card:hover .colour-swatch::before {
+  animation: shimmer 0.6s ease forwards;
+}
+@keyframes shimmer { to { transform: translateX(250%); } }
+
+.colour-hex {
+  font-family: 'Cormorant SC', serif;
+  font-size: 13px; display: block;
+  margin-bottom: 5px; letter-spacing: 0.05em;
+  opacity: 0.8;
+}
+.colour-name {
+  font-size: 8px; font-weight: 500;
+  letter-spacing: 0.3em; text-transform: uppercase;
+  display: block; margin-bottom: 10px; opacity: 0.45;
+}
+
+.colour-rationale {
+  font-size: 11px; line-height: 1.75;
+  opacity: 0; max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.45s ease, opacity 0.3s ease;
+  border-left: 2px solid rgba(255,255,255,0.12);
+  padding-left: 0;
+}
+.colour-card:hover .colour-rationale,
+.colour-card.active .colour-rationale {
+  max-height: 120px; opacity: 0.55; padding-left: 12px;
+}
+
+/* ════════════════════════════════════════════
+   TYPOGRAPHY SECTION
+════════════════════════════════════════════ */
+.type-section {
+  margin-bottom: 100px;
+  opacity: 0; transform: translateY(32px);
+  transition: opacity 0.8s ease, transform 0.8s ease;
+}
+.type-section.visible { opacity: 1; transform: translateY(0); }
+
+.type-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+.type-card {
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 6px;
+  padding: 44px 36px;
+  background: rgba(255,255,255,0.02);
+  position: relative; overflow: hidden;
+  transition: border-color 0.3s ease, background 0.3s ease;
+}
+.type-card:hover {
+  border-color: rgba(255,255,255,0.16);
+  background: rgba(255,255,255,0.04);
+}
+.type-card::before {
+  content: attr(data-num);
+  position: absolute; top: 20px; right: 22px;
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 60px; font-weight: 300;
+  color: rgba(255,255,255,0.04);
+  line-height: 1; pointer-events: none;
+}
+
+.type-tag {
+  font-size: 8px; font-weight: 500;
+  letter-spacing: 0.4em; text-transform: uppercase;
+  opacity: 0.4; margin-bottom: 22px; display: block;
+}
+
+.type-display-serif {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 44px; font-weight: 300;
+  line-height: 1.05; margin-bottom: 18px;
+  display: block; letter-spacing: -0.01em;
+}
+.type-display-serif em { font-style: italic; opacity: 0.55; }
+
+.type-display-caps {
+  font-family: 'Cormorant SC', serif;
+  font-size: 16px; font-weight: 600;
+  letter-spacing: 0.28em; margin-bottom: 18px;
+  display: block;
+}
+
+.type-body {
+  font-family: 'Jost', sans-serif;
+  font-size: 12px; font-weight: 300;
+  line-height: 1.9; opacity: 0.5;
+  margin-bottom: 22px; display: block;
+}
+
+.type-meta {
+  display: flex; flex-direction: column; gap: 8px;
+  padding-top: 22px;
+  border-top: 1px solid rgba(255,255,255,0.08);
+}
+.type-meta-row {
+  display: flex; justify-content: space-between; align-items: center;
+}
+.type-meta-label {
+  font-size: 8px; letter-spacing: 0.3em;
+  text-transform: uppercase; opacity: 0.35;
+}
+.type-meta-value {
+  font-family: 'Cormorant SC', serif;
+  font-size: 12px; opacity: 0.75;
+}
+
+/* Rationale toggle */
+.type-rationale-toggle {
+  margin-top: 18px; display: flex; align-items: center;
+  gap: 10px; cursor: pointer; user-select: none;
+}
+.type-rationale-toggle span {
+  font-size: 8px; letter-spacing: 0.35em;
+  text-transform: uppercase; opacity: 0.4;
+  transition: opacity 0.2s;
+}
+.type-rationale-toggle:hover span { opacity: 0.85; }
+
+.toggle-icon {
+  width: 20px; height: 20px; border-radius: 50%;
+  border: 1px solid rgba(255,255,255,0.18);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; transition: all 0.3s ease;
+}
+.type-rationale-toggle:hover .toggle-icon {
+  border-color: rgba(255,255,255,0.4);
+  background: rgba(255,255,255,0.06);
+}
+.toggle-icon svg {
+  width: 8px; height: 8px;
+  fill: none; stroke: currentColor;
+  stroke-width: 1.5; opacity: 0.5;
+  transition: transform 0.35s ease;
+}
+.toggle-icon.open svg { transform: rotate(90deg); }
+
+.type-rationale-content {
+  max-height: 0; overflow: hidden; opacity: 0;
+  font-size: 11px; line-height: 1.8;
+  border-left: 2px solid rgba(255,255,255,0.1);
+  transition: max-height 0.5s ease, opacity 0.4s ease;
+}
+.type-rationale-content.open {
+  max-height: 180px; opacity: 0.55;
+  margin-top: 14px; padding-left: 14px;
+}
+
+/* ════════════════════════════════════════════
+   SLIDE FOOTER
+════════════════════════════════════════════ */
+.slide-footer {
+  border-top: 1px solid rgba(255,255,255,0.08);
+  padding-top: 40px;
+  display: flex; justify-content: space-between; align-items: center;
+  opacity: 0; transform: translateY(20px);
+  transition: opacity 0.6s ease, transform 0.6s ease;
+}
+.slide-footer.visible { opacity: 1; transform: translateY(0); }
+
+.footer-project {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 20px; font-weight: 300; letter-spacing: 0.08em;
+}
+.footer-meta {
+  font-size: 9px; letter-spacing: 0.35em;
+  text-transform: uppercase; opacity: 0.35;
+}
+
+/* ════════════════════════════════════════════
+   PLACEHOLDER SLIDE STYLE
+════════════════════════════════════════════ */
+.coming-soon-block {
+  text-align: center;
+  padding: 80px 40px;
+  border: 1px dashed rgba(255,255,255,0.1);
+  border-radius: 8px;
+  margin: 40px 0;
+}
+.coming-soon-block .cs-num {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 72px; font-weight: 300;
+  opacity: 0.08; line-height: 1; display: block;
+  margin-bottom: 20px;
+}
+.coming-soon-block .cs-label {
+  font-size: 9px; letter-spacing: 0.5em;
+  text-transform: uppercase; opacity: 0.3;
+}
+
+/* ════════════════════════════════════════════
+   SCROLL ANIMATIONS
+════════════════════════════════════════════ */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(28px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.slide.active .proposal-header {
+  animation: fadeUp 0.8s cubic-bezier(0.22, 1, 0.36, 1) 0.15s both;
+}
+.slide.active .proposal-header { opacity: 1; transform: none; }
+
+/* ════════════════════════════════════════════
+   RESPONSIVE
+════════════════════════════════════════════ */
+@media (max-width: 900px) {
+  .type-grid { grid-template-columns: 1fr; }
+  .colour-grid { grid-template-columns: repeat(3, 1fr); }
+  #nav { width: 48px; }
+  .slide-inner { padding: 60px 24px 100px 64px; }
+  .nav-dot .nav-tooltip { display: none; }
+}
+
+@media (max-width: 640px) {
+  .colour-grid { grid-template-columns: repeat(2, 1fr) !important; }
+  .slide-inner { padding: 48px 18px 100px 56px; }
+  #bottom-nav { right: 18px; bottom: 20px; }
+}
+
+</style>
+</head>
+<body>
+<div id="noise"></div>
+
+<!-- ══ LEFT NAV ══ -->
+<nav id="nav"></nav>
+
+<!-- ══ BOTTOM ARROWS ══ -->
+<div id="bottom-nav">
+  <button class="arrow-btn" id="btn-prev" aria-label="Previous style">
+    <svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>
+  </button>
+  <span class="slide-counter-fixed" id="counter">01 / 12</span>
+  <button class="arrow-btn" id="btn-next" aria-label="Next style">
+    <svg viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>
+  </button>
+</div>
+
+<!-- ══ SLIDES ══ -->
+<div id="slides-container"></div>
+
+<script>
+/* ════════════════════════════════════════════
+   THEME DATA
+   To add a new style: fill in the matching
+   object in THEMES array (index 1–11).
+   Style 01 (index 0) is fully built.
+════════════════════════════════════════════ */
+const THEMES = [
+  /* ── 01: COBALT HERITAGE ── */
+  {
+    id: '01',
+    name: 'Cobalt Heritage',
+    subtitle: 'Apothecary Stripe',
+    bg: '#07213F',
+    text: '#F0E8D0',
+    accent: '#8FAFC9',
+    mockups: [
+      {
+        src: 'https://cdn.prod.website-files.com/68fbbced1dcac6bef11cfb39/699d99ecbd34c4e05e71842d_WhatsApp%20Image%202026-02-24%20at%2017.00.00%20(1).jpeg',
+        title: 'Hydrating Body Lotion',
+        sub: 'Apothecary Stripe · Variant 01'
+      },
+      {
+        src: 'https://cdn.prod.website-files.com/68fbbced1dcac6bef11cfb39/699d99ec373688b46a956d7f_WhatsApp%20Image%202026-02-24%20at%2017.00.00.jpeg',
+        title: 'Herbal Revival Shampoo',
+        sub: 'Medallion Grid · Variant 01'
+      }
+    ],
+    colours: [
+      { hex: '#1A5BAE', bg: '#1A5BAE', name: 'Royal Cobalt',    rationale: 'The brand\'s hero blue — confident, heritage-rich, and immediately recognisable. It references the tradition of cobalt glass apothecary vessels used since the 19th century, positioning the brand within a lineage of trusted craft.' },
+      { hex: '#07213F', bg: '#07213F', name: 'Midnight Navy',   rationale: 'Used for depth and shadow — this near-black navy grounds the palette and prevents the cobalt from feeling flat. It appears in backgrounds and negative space, lending gravitas and luxury to the overall composition.' },
+      { hex: '#F0E8D0', bg: '#F0E8D0', name: 'Parchment Cream', rationale: 'Every label and typographic element lives in this warm cream. It avoids the sterility of pure white and evokes aged document stock — referencing heritage, handcraft, and artisanal production.' },
+      { hex: '#0A0A14', bg: '#0A0A14', name: 'Ink Black',       rationale: 'The pump hardware and typographic accents use this near-black. It introduces a modern, architectural edge that keeps the heritage palette from feeling overly nostalgic or rustic.' },
+      { hex: '#8FAFC9', bg: '#8FAFC9', name: 'Steel Blue',      rationale: 'A desaturated mid-tone that bridges the deep cobalt and pale cream. Applied to decorative medallions and secondary motifs, it prevents visual flatness and adds tonal sophistication.' }
+    ],
+    typeCards: [
+      {
+        tag: 'Display — Cormorant Garamond',
+        num: 'A',
+        display: `<span class="type-display-serif">Refined<br>by <em>Nature</em></span>`,
+        body: 'Inspired by the classic Garamond cuts of the 16th century, this serif brings editorial grace and historical credibility to every headline.',
+        meta: [
+          { label: 'Classification', value: 'Old Style Serif' },
+          { label: 'Weights Used',   value: 'Light · Regular · Italic' },
+          { label: 'Usage',          value: 'Headlines, Titles' }
+        ],
+        toggleLabel: 'Why this typeface?',
+        rationale: 'Cormorant Garamond was chosen for its high stroke contrast and delicate hairlines — qualities that photograph beautifully on glass and paper alike. Its italic cuts carry a sense of quiet confidence that suits a brand navigating heritage and modernity. The extreme x-height variation gives headlines a distinctive rhythm not found in more neutral display serifs.'
+      },
+      {
+        tag: 'Labelling — Cormorant SC + Jost',
+        num: 'B',
+        display: `<span class="type-display-caps">Herbal Revival</span>`,
+        body: 'Wet hair. Apply freely. Lather and rinse. Enriched with natural extracts for all-day moisture. Leaves skin smooth and supple. Suitable for all types.',
+        meta: [
+          { label: 'Small Caps', value: 'Cormorant SC · Semibold' },
+          { label: 'Body / UI',  value: 'Jost · Light 300' },
+          { label: 'Usage',      value: 'Labels, Ingredients, Copy' }
+        ],
+        toggleLabel: 'Why this pairing?',
+        rationale: 'The small caps cut of Cormorant provides the formal authority needed for product naming at small label sizes, where traditional lowercase can feel too delicate. Jost at Light weight introduces a quiet geometric modernity that contrasts the classical serif — this tension between old and new mirrors the brand\'s positioning of ancient herbal knowledge in a contemporary context.'
+      }
+    ]
+  },
+
+  /* ── 02–12: PLACEHOLDERS ──
+     Replace each object below with real theme data
+     in the same structure as Theme 01 above.
+     The mockups array, colours array, and typeCards
+     array all follow identical shapes.
+  ───────────────────────────────────────────── */
+  /* ── 02: TERRACOTTA REVERIE ── */
+  {
+    id: '02',
+    name: 'Terracotta Reverie',
+    subtitle: 'Retro Bloom',
+    bg: '#E8B4A0',
+    text: '#2A0E08',
+    accent: '#C4483A',
+    lightBg: true,
+    mockups: [
+      {
+        src: 'https://cdn.prod.website-files.com/68fbbced1dcac6bef11cfb39/699ddab75ae5fee68e9ba2ae_Gemini_Generated_Image_8hv8608hv8608hv8.jpg',
+        title: 'Vintage Vitality Serum',
+        sub: 'Polka Dot · Variant 01'
+      },
+      {
+        src: 'https://cdn.prod.website-files.com/68fbbced1dcac6bef11cfb39/699ddab7615547be04ec0659_Gemini_Generated_Image_hvmwuxhvmwuxhvmw.jpg',
+        title: 'Aurora Glow Skincare',
+        sub: 'Gingham Check · Variant 02'
+      },
+      {
+        src: 'https://cdn.prod.website-files.com/68fbbced1dcac6bef11cfb39/699ddab7c37b085fd0deee62_1.jpg',
+        title: 'Natura Beauty Collection',
+        sub: 'Retro Checker · Variant 03'
+      }
+    ],
+    colours: [
+      {
+        hex: '#C4483A',
+        bg: '#C4483A',
+        name: 'Terracotta Red',
+        rationale: 'The dominant brand colour — a warm, sun-baked red that channels the energy of 1970s graphic design. Confident and immediately recognisable without the aggression of a pure red.'
+      },
+      {
+        hex: '#EDE3C8',
+        bg: '#EDE3C8',
+        name: 'Warm Parchment',
+        rationale: 'The label background and breathing space of the system. This toasty cream nods to unbleached vintage paper stock and keeps the palette feeling tactile and handmade.'
+      },
+      {
+        hex: '#5A9E8F',
+        bg: '#5A9E8F',
+        name: 'Sage Teal',
+        rationale: 'The unexpected accent — a muted teal-sage that prevents the terracotta palette from reading as too warm or one-dimensional. It references 70s kitchen ceramics and vintage mint tins.'
+      },
+      {
+        hex: '#E8907A',
+        bg: '#E8907A',
+        name: 'Dusty Coral',
+        rationale: 'A softened mid-tone that bridges the bold terracotta and the pale cream. Used in polka dots, backgrounds, and packaging overlays — it adds warmth and playfulness without competing.'
+      },
+      {
+        hex: '#2A0E08',
+        bg: '#2A0E08',
+        name: 'Deep Espresso',
+        rationale: 'Typography and structural detail. A brown-black warmer than ink that keeps all text cohesive with the overall warm palette — no cold neutrals anywhere in this system.'
+      }
+    ],
+    typeCards: [
+      {
+        tag: 'Display — Abril Fatface',
+        num: 'A',
+        display: `<span class="type-display-serif" style="font-family:'Abril Fatface', serif; font-size:50px; font-weight:400; letter-spacing:0.01em; line-height:1.0;">Retro<br>Glow</span>`,
+        body: 'Inspired by Victorian poster typography and 1970s revival design, this ultra-bold display face commands attention at every scale.',
+        meta: [
+          { label: 'Classification', value: 'Display Serif' },
+          { label: 'Weight Used',    value: 'Regular 400' },
+          { label: 'Usage',          value: 'Brand Name, Headlines' }
+        ],
+        toggleLabel: 'Why this typeface?',
+        rationale: 'Abril Fatface is rooted in 19th-century "Fat Face" poster types — the same tradition that inspired 1960s and 70s graphic revivals. Its extreme stroke contrast and tight apertures create the kind of bold, punchy lettering seen on vintage beauty packaging. At large sizes it feels genuinely retro without needing any artificial distressing.'
+      },
+      {
+        tag: 'Labelling — Righteous + DM Sans',
+        num: 'B',
+        display: `<span class="type-display-caps" style="font-family:'Righteous', sans-serif; font-size:17px; letter-spacing:0.2em;">Hydrating Face Cream</span>`,
+        body: 'Daily Moisturiser. Enriched with natural botanical extracts. Renews and softens. Suitable for all skin types. 55ml.',
+        meta: [
+          { label: 'Sub-heading', value: 'Righteous · Regular' },
+          { label: 'Body / Info', value: 'DM Sans · Light 300' },
+          { label: 'Usage',       value: 'Product Names, Labels, Copy' }
+        ],
+        toggleLabel: 'Why this pairing?',
+        rationale: 'Righteous brings the geometric, slightly condensed character of 1970s display lettering without tipping into pastiche. It sits comfortably on curved labels and works as beautifully at 8pt on ingredient lists as it does at 18pt for product names. DM Sans at Light provides a modern, airy foil — the combination reads as "vintage-inspired" rather than "fancy dress retro".'
+      }
+    ]
+  },
+  { id:'03', name:'Style 03', subtitle:'Coming Soon', bg:'#0F1A10', text:'#DDE8D5', accent:'#7A9E6A', placeholder:true },
+  { id:'04', name:'Style 04', subtitle:'Coming Soon', bg:'#1E1008', text:'#F2E4D0', accent:'#C4864A', placeholder:true },
+  { id:'05', name:'Style 05', subtitle:'Coming Soon', bg:'#0A0A0A', text:'#F0EAE0', accent:'#C8A84C', placeholder:true },
+  { id:'06', name:'Style 06', subtitle:'Coming Soon', bg:'#D5E8F5', text:'#162030', accent:'#2E6EA8', placeholder:true },
+  { id:'07', name:'Style 07', subtitle:'Coming Soon', bg:'#1A0E08', text:'#F5E8C5', accent:'#D89020', placeholder:true },
+  { id:'08', name:'Style 08', subtitle:'Coming Soon', bg:'#0C0818', text:'#E2D8FF', accent:'#9068CC', placeholder:true },
+  { id:'09', name:'Style 09', subtitle:'Coming Soon', bg:'#181816', text:'#E0DCD2', accent:'#8A9C7A', placeholder:true },
+  { id:'10', name:'Style 10', subtitle:'Coming Soon', bg:'#100808', text:'#F2E8E0', accent:'#C04030', placeholder:true },
+  { id:'11', name:'Style 11', subtitle:'Coming Soon', bg:'#0A1420', text:'#D5E5F0', accent:'#3A7A9A', placeholder:true },
+  { id:'12', name:'Style 12', subtitle:'Coming Soon', bg:'#181010', text:'#EEE0D8', accent:'#A06050', placeholder:true },
+];
+
+/* ════════════════════════════════════════════
+   BUILD NAVIGATION
+════════════════════════════════════════════ */
+const navEl = document.getElementById('nav');
+
+THEMES.forEach((t, i) => {
+  const dot = document.createElement('div');
+  dot.className = 'nav-dot' + (i === 0 ? ' active' : '');
+  dot.dataset.i = i;
+  dot.innerHTML = `
+    <span class="nav-dot-num">${t.id}</span>
+    <div class="nav-tooltip">${t.name}</div>
+  `;
+  dot.addEventListener('click', () => goTo(i));
+  navEl.appendChild(dot);
+});
+
+/* ════════════════════════════════════════════
+   BUILD SLIDES
+════════════════════════════════════════════ */
+const container = document.getElementById('slides-container');
+
+function buildSlide(t, i) {
+  const slide = document.createElement('div');
+  slide.className = 'slide' + (i === 0 ? ' active' : '');
+  slide.dataset.i = i;
+  slide.style.color = t.text;
+
+  if (t.placeholder) {
+    slide.innerHTML = `
+      <div class="slide-inner">
+        <header class="proposal-header visible" style="color:${t.text}">
+          <span class="eyebrow" style="color:${t.accent}">Project Phoenix · Brand Design Proposal</span>
+          <h1>Style<br><em>${t.id}</em></h1>
+          <span class="style-name-tag">${t.name} — ${t.subtitle}</span>
+          <div class="rule-line" style="color:${t.text}">
+            <span class="rule-ornament">✦</span>
+          </div>
+        </header>
+        <div class="coming-soon-block" style="border-color:rgba(255,255,255,0.08)">
+          <span class="cs-num" style="color:${t.text}">${t.id}</span>
+          <span class="cs-label" style="color:${t.text}">This style is ready for your content.<br>Add mockup images, colour data, and typography details to populate this slide.</span>
+        </div>
+        <footer class="slide-footer visible" style="border-color:rgba(255,255,255,0.08);color:${t.text}">
+          <span class="footer-project">Project Phoenix</span>
+          <span class="footer-meta">February 2026 · Confidential</span>
+        </footer>
+      </div>`;
+    return slide;
+  }
+
+  /* ── MOCKUP HTML ── */
+  const mockupHTML = t.mockups.map((m, mi) => `
+    <div class="mockup-card" style="transition-delay:${mi * 0.12}s">
+      <img src="${m.src}" alt="${m.title}" loading="lazy">
+      <div class="mockup-caption">
+        <h3>${m.title}</h3>
+        <p>${m.sub}</p>
+      </div>
+    </div>`).join('');
+
+  /* ── COLOUR HTML ── */
+  const colourHTML = t.colours.map(c => `
+    <div class="colour-card">
+      <div class="colour-swatch" style="background:${c.bg};${c.bg === t.bg ? `border:1px solid ${subtleMd};` : ''}"></div>
+      <span class="colour-hex" style="color:${t.text}">${c.hex}</span>
+      <span class="colour-name" style="color:${t.text}">${c.name}</span>
+      <div class="colour-rationale" style="color:${t.text};border-color:${t.accent}40;opacity:${t.lightBg ? '0.85' : '0.55'}">${c.rationale}</div>
+    </div>`).join('');
+
+  /* ── LIGHT / DARK AWARE RGBA ── */
+  const subtle   = t.lightBg ? 'rgba(0,0,0,0.08)'  : 'rgba(255,255,255,0.08)';
+  const subtleMd = t.lightBg ? 'rgba(0,0,0,0.15)'  : 'rgba(255,255,255,0.15)';
+  const iconBdr  = t.lightBg ? 'rgba(0,0,0,0.22)'  : 'rgba(255,255,255,0.18)';
+  const metaBdr  = t.lightBg ? 'rgba(0,0,0,0.10)'  : 'rgba(255,255,255,0.08)';
+  const cardBg   = t.lightBg ? 'rgba(0,0,0,0.04)'  : 'rgba(255,255,255,0.02)';
+  const bodyOpacity = t.lightBg ? '0.65' : '0.5';
+
+  /* ── TYPE CARDS HTML ── */
+  const typeHTML = t.typeCards.map(tc => `
+    <div class="type-card" data-num="${tc.num}" style="border-color:${subtle};background:${cardBg}">
+      <span class="type-tag" style="color:${t.accent}">${tc.tag}</span>
+      ${tc.display}
+      <span class="type-body" style="opacity:${bodyOpacity}">${tc.body}</span>
+      <div class="type-meta" style="border-color:${metaBdr}">
+        ${tc.meta.map(m => `
+          <div class="type-meta-row">
+            <span class="type-meta-label" style="color:${t.text};opacity:0.5">${m.label}</span>
+            <span class="type-meta-value" style="color:${t.text}">${m.value}</span>
+          </div>`).join('')}
+      </div>
+      <div class="type-rationale-toggle" onclick="toggleRationale(this)">
+        <div class="toggle-icon" style="border-color:${iconBdr};color:${t.text}">
+          <svg viewBox="0 0 8 8"><path d="M2 1l4 3-4 3"/></svg>
+        </div>
+        <span style="color:${t.accent}">${tc.toggleLabel}</span>
+      </div>
+      <div class="type-rationale-content" style="color:${t.text};border-color:${t.accent}50;opacity:0.8">${tc.rationale}</div>
+    </div>`).join('');
+
+  slide.innerHTML = `
+    <div class="slide-inner">
+
+      <!-- HEADER -->
+      <header class="proposal-header" style="color:${t.text}">
+        <span class="eyebrow" style="color:${t.accent}">Project Phoenix · Brand Design Proposal</span>
+        <h1>${t.name.split(' ')[0]}<br><em>${t.name.split(' ').slice(1).join(' ') || t.subtitle}</em></h1>
+        <span class="style-name-tag">${t.subtitle} · Style ${t.id}</span>
+        <div class="rule-line" style="color:${t.text}">
+          <span class="rule-ornament">✦</span>
+        </div>
+      </header>
+
+      <!-- MOCKUPS -->
+      <section class="mockup-section">
+        <p class="section-label" style="color:${t.accent}">01 &nbsp; Packaging Mockups</p>
+        <div class="mockup-gallery">${mockupHTML}</div>
+      </section>
+
+      <!-- COLOURS -->
+      <section class="colour-section">
+        <p class="section-label" style="color:${t.accent}">02 &nbsp; Colour Palette</p>
+        <div class="colour-grid">${colourHTML}</div>
+      </section>
+
+      <!-- TYPOGRAPHY -->
+      <section class="type-section">
+        <p class="section-label" style="color:${t.accent}">03 &nbsp; Typography</p>
+        <div class="type-grid">${typeHTML}</div>
+      </section>
+
+      <!-- FOOTER -->
+      <footer class="slide-footer" style="border-color:${subtle};color:${t.text}">
+        <span class="footer-project">Project Phoenix</span>
+        <span class="footer-meta">February 2026 · Confidential</span>
+      </footer>
+
+    </div>`;
+
+  return slide;
+}
+
+THEMES.forEach((t, i) => container.appendChild(buildSlide(t, i)));
+
+/* ════════════════════════════════════════════
+   NAVIGATION LOGIC
+════════════════════════════════════════════ */
+let current = 0;
+
+function applyNavTheme(i) {
+  const t = THEMES[i];
+  const isLight = t.lightBg || false;
+  const navEl = document.getElementById('nav');
+  navEl.style.color = isLight ? 'rgba(0,0,0,0.5)' : 'rgba(255,255,255,0.5)';
+  document.querySelectorAll('.nav-dot-num').forEach(n => {
+    n.style.color = isLight ? 'rgba(0,0,0,0.3)' : '';
+  });
+  document.querySelectorAll('.nav-dot.active .nav-dot-num').forEach(n => {
+    n.style.color = isLight ? 'rgba(0,0,0,0.9)' : '';
+  });
+  document.querySelectorAll('.arrow-btn').forEach(b => {
+    b.style.color = isLight ? 'rgba(0,0,0,0.6)' : '';
+    b.style.borderColor = isLight ? 'rgba(0,0,0,0.15)' : '';
+    b.style.background = isLight ? 'rgba(0,0,0,0.05)' : '';
+  });
+  document.getElementById('counter').style.color = isLight ? 'rgba(0,0,0,0.4)' : '';
+}
+
+function goTo(next) {
+  if (next === current) return;
+  const slides = document.querySelectorAll('.slide');
+  const dots   = document.querySelectorAll('.nav-dot');
+  const dir    = next > current ? 1 : -1;
+
+  // Exit current slide
+  slides[current].style.transition = 'opacity 0.55s ease, transform 0.55s cubic-bezier(0.77,0,0.18,1)';
+  slides[current].style.opacity   = '0';
+  slides[current].style.transform = dir > 0 ? 'translateY(-40px)' : 'translateY(40px)';
+  slides[current].style.pointerEvents = 'none';
+  dots[current].classList.remove('active');
+
+  current = next;
+
+  // Update body bg
+  document.body.style.background = THEMES[current].bg;
+  applyNavTheme(current);
+
+  // Prepare incoming slide
+  const incoming = slides[current];
+  incoming.scrollTop = 0; // reset scroll
+  incoming.style.transition = 'none';
+  incoming.style.opacity   = '0';
+  incoming.style.transform = dir > 0 ? 'translateY(40px)' : 'translateY(-40px)';
+  incoming.style.pointerEvents = 'all';
+
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    incoming.style.transition = 'opacity 0.7s cubic-bezier(0.77,0,0.18,1), transform 0.7s cubic-bezier(0.77,0,0.18,1)';
+    incoming.style.opacity   = '1';
+    incoming.style.transform = 'translateY(0)';
+  }));
+
+  // Update nav dot
+  dots[current].classList.add('active');
+
+  // Update counter
+  document.getElementById('counter').textContent =
+    `${String(current+1).padStart(2,'0')} / ${String(THEMES.length).padStart(2,'0')}`;
+
+  // Clean up old slide after transition
+  setTimeout(() => {
+    slides.forEach((sl, si) => {
+      if (si !== current) {
+        sl.classList.remove('active');
+        sl.style.opacity = '';
+        sl.style.transform = '';
+        sl.style.transition = '';
+        sl.style.pointerEvents = '';
+      }
+    });
+    incoming.classList.add('active');
+    // Trigger scroll-reveal for newly visible slide
+    triggerScrollReveal(incoming);
+  }, 750);
+}
+
+function navigate(dir) {
+  let n = current + dir;
+  if (n < 0) n = THEMES.length - 1;
+  if (n >= THEMES.length) n = 0;
+  goTo(n);
+}
+
+document.getElementById('btn-prev').addEventListener('click', () => navigate(-1));
+document.getElementById('btn-next').addEventListener('click', () => navigate(1));
+
+/* ════════════════════════════════════════════
+   KEYBOARD + SWIPE
+════════════════════════════════════════════ */
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight' || e.key === 'ArrowDown') navigate(1);
+  if (e.key === 'ArrowLeft'  || e.key === 'ArrowUp')   navigate(-1);
+});
+
+let tx = 0;
+document.addEventListener('touchstart', e => { tx = e.touches[0].clientX; }, { passive: true });
+document.addEventListener('touchend', e => {
+  const dx = e.changedTouches[0].clientX - tx;
+  if (Math.abs(dx) > 55) navigate(dx < 0 ? 1 : -1);
+});
+
+/* ════════════════════════════════════════════
+   SCROLL REVEAL (per-slide)
+════════════════════════════════════════════ */
+function triggerScrollReveal(slide) {
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('visible');
+        entry.target.querySelectorAll('.mockup-card').forEach(c => c.classList.add('visible'));
+        observer.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.08, root: slide });
+
+  slide.querySelectorAll('.proposal-header, .colour-section, .type-section, .slide-footer, .mockup-section').forEach(el => {
+    observer.observe(el);
+  });
+
+  // Immediate trigger for above-fold
+  setTimeout(() => {
+    slide.querySelectorAll('.proposal-header, .colour-section, .type-section, .slide-footer').forEach(el => {
+      const rect = el.getBoundingClientRect();
+      if (rect.top < window.innerHeight) el.classList.add('visible');
+    });
+    slide.querySelectorAll('.mockup-card').forEach(c => {
+      const rect = c.getBoundingClientRect();
+      if (rect.top < window.innerHeight) c.classList.add('visible');
+    });
+  }, 200);
+}
+
+/* ════════════════════════════════════════════
+   RATIONALE TOGGLES
+════════════════════════════════════════════ */
+function toggleRationale(trigger) {
+  const content = trigger.nextElementSibling;
+  const icon    = trigger.querySelector('.toggle-icon');
+  const isOpen  = content.classList.contains('open');
+  content.classList.toggle('open', !isOpen);
+  icon.classList.toggle('open', !isOpen);
+}
+
+document.addEventListener('click', e => {
+  const card = e.target.closest('.colour-card');
+  if (card) card.classList.toggle('active');
+});
+
+/* ════════════════════════════════════════════
+   INIT
+════════════════════════════════════════════ */
+document.body.style.background = THEMES[0].bg;
+applyNavTheme(0);
+triggerScrollReveal(document.querySelector('.slide.active'));
+</script>
+</body>
+</html>
